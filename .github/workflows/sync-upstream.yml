@@ -1,4 +1,4 @@
-name: 自动同步仓库with PushPlus
+name: Scheduled Sync with PushPlus
 
 on:
   schedule:
@@ -46,8 +46,6 @@ jobs:
             -d "{
               \"token\": \"7a8278dc72974977a03bb6b804155223\",
               \"title\": \"仓库同步失败：$REPO_NAME\",
-              \"content\": \"仓库 $REPO_NAME 的自动同步任务失败。这通常是因为上游代码与您的修改存在冲突，请手动
-
-处理。\",
+              \"content\": \"仓库 $REPO_NAME 的自动同步任务失败。这通常是因为上游代码与您的修改存在冲突，请手动处理。\",
               \"template\": \"html\"
             }"
