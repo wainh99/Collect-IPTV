@@ -1,35 +1,53 @@
-name: 自动同步上游更新
+name: 自动同步仓库with PushPlus
+
 on:
   schedule:
-    - cron: '0 20 * * *'
-  workflow_dispatch:
+    - cron: '0 0 * * *' 
+  workflow_dispatch:   
 
 jobs:
-  sync:
+  sync_latest_from_upstream:
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: 检出代码
+      - name: Checkout target repo
         uses: actions/checkout@v4
         with:
-          ref: main
-          fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
+          fetch-depth: 0 
 
-      - name: 配置Git
+      - name: Sync upstream changes
+        id: sync
         run: |
-          git config --global user.name "github-actions[bot]"
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name 'GitHub Action'
+          git config --global user.email 'action@github.com'
+          
+          # 请将下方地址修改为实际的上游仓库地址
+          git remote add upstream https://github.com/zilong7728/Collect-IPTV.git
+          git fetch upstream
+          
+          git checkout main
+          
+          # 尝试合并，如果失败则触发通知逻辑
+          if ! git merge upstream/main --allow-unrelated-histories; then
+            echo "sync_status=failed" >> $GITHUB_OUTPUT
+            exit 1
+          fi
+          
+          git push origin main
 
-      - name: 添加上游仓库
-        run: git remote add upstream https://github.com/zilong7728/Collect-IPTV.git    # 改这里
+      - name: PushPlus Notification on Failure
+        if: failure() # 仅在前面的步骤出错（同步失败）时运行
+        run: |
+          # 获取当前仓库名称，格式为 "用户名/仓库名"
+          REPO_NAME="${{ github.repository }}"
+          
+          curl -s -X POST http://www.pushplus.plus/send \
+            -H "Content-Type: application/json" \
+            -d "{
+              \"token\": \"7a8278dc72974977a03bb6b804155223\",
+              \"title\": \"仓库同步失败：$REPO_NAME\",
+              \"content\": \"仓库 $REPO_NAME 的自动同步任务失败。这通常是因为上游代码与您的修改存在冲突，请手动
 
-      - name: 拉取上游更新
-        run: git fetch upstream
-
-      - name: 合并更新
-        run: git merge upstream/main --no-edit --allow-unrelated-histories
-
-      - name: 推送更新
-        run: git push origin main
+处理。\",
+              \"template\": \"html\"
+            }"
